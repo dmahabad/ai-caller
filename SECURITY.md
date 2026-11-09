@@ -42,7 +42,7 @@ The default data directory is `~/.local/share/ai-caller/` (change it with `PHONE
 | Full transcripts | Yes | `conversations/<id>/transcript.jsonl` |
 | Diagnostic logs (no numbers, text, audio or keys) | Yes | `logs/calls.jsonl` |
 | Phone numbers | No | — |
-| Call audio | No | — |
+| Call audio | Only when `PHONE_RECORD_CALLS=1` | `conversations/<id>/call.wav` |
 | API key | No | — |
 
 On the Mac, Bluetooth pairing keys are saved in `<data dir>/devices/pair-keys.json` (mode 600). This file is outside the repository. Do not commit or share it.

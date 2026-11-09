@@ -201,6 +201,7 @@ python3 client/run.py
 | `OPENAI_API_KEY` | 无（必填） | 你的 OpenAI API 密钥。如果 `~/.codex/config.toml` 设置了其他密钥变量名，网关读取那个变量。 |
 | `OPENAI_BACKEND_MODEL` | `gpt-6-luna` | 通话的后端推理模型。 |
 | `PHONE_DATA_DIR` | `~/.local/share/ai-caller/` | 任务、Prompt、对话和日志的数据目录。 |
+| `PHONE_RECORD_CALLS` | 未设置 | 设为 `1` 时，把每通电话存成私有立体声 WAV。其他值都不保存通话音频。 |
 | `PHONE_NODE` | `PATH` 中的 `node` | AI worker 使用的 Node.js。Mac 启动器自动设为它自己的 `node`。 |
 | `PHONE_CLIENT_ORIGINS` | 端口 5173 上的 `localhost` / `127.0.0.1` | 单独提供控制台时额外允许的来源（逗号分隔）。 |
 | `PHONE_MAC_PYTHON` | `python3` | 仅 Mac。`server/run-mac.cjs` 使用的 Python。`python -m server` 会自动设置。 |
@@ -219,12 +220,13 @@ python3 client/run.py
 
 - 任务文件和 Prompt（私有 JSON）。
 - 每个会话（去电和来电）的记录和完整对话文字，位于 `conversations/<id>/`。
+- 通话录音，仅当 `PHONE_RECORD_CALLS=1`。文件是 `conversations/<id>/call.wav`：24 kHz 立体声 PCM16，左声道是手机，右声道是 AI。
 - 诊断日志 `logs/calls.jsonl`。日志不含电话号码、任务正文、对话文字、音频或密钥。
 
 网关不保存：
 
 - 电话号码。
-- 通话音频。
+- 通话音频，除非 `PHONE_RECORD_CALLS=1`。
 - API 密钥。
 
 对话文字包含通话内容，属于敏感数据。目前没有自动清理，也没有删除 API。需要时手动删除数据目录中的文件。

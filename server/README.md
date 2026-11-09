@@ -86,8 +86,9 @@ Each conversation, outbound and inbound, is saved under `conversations/<id>/` in
 
 - `meta.json`: conversation ID, direction, phone address, create/answer/end times, state, end reason, cleanup result, error, task ID, voice and audio byte counts. The server replaces the whole file when the state changes and at cleanup.
 - `transcript.jsonl`: the full transcript, appended line by line (role `caller`/`ai`, text, start/end times, event ID). The in-memory cache limit does not apply.
+- `call.wav`, only when `PHONE_RECORD_CALLS=1`: stereo PCM16 at 24 kHz. The left channel is the phone capture and the right channel is the AI playback. A side that runs ahead is padded with silence so the channels stay aligned. The file is not created when the call has no audio.
 
-Phone numbers are not recorded: not in meta, transcripts, task files or logs. Call audio is not saved. A write failure only records a diagnostic and does not affect the call. The saved files contain conversation content and are sensitive. There is no automatic cleanup and no delete API. An administrator must manage the data directory manually.
+Phone numbers are not recorded: not in meta, transcripts, task files or logs. Call audio is not saved unless `PHONE_RECORD_CALLS=1`. A write failure only records a diagnostic and does not affect the call. The saved files contain conversation content and are sensitive. There is no automatic cleanup and no delete API. An administrator must manage the data directory manually.
 
 ### Compatible low-level API
 

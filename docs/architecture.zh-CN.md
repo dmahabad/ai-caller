@@ -268,6 +268,7 @@ flowchart LR
 - **转写：** 第二个 `socketpair`（`PHONE_TRANSCRIPT_FD`）传送 worker 的转写事件。Server 保留有界的实时缓存，并把每条接受的事件写入磁盘。
 - **指令：** Server 把文字指令写入 worker 的 stdin。worker 以 `session.instructions.append` 发给模型，并在 stdout 报告回执。
 - **监听副本：** `CallSession.publish` 把每帧采集和播放音频复制到监听队列（每个队列 5 个包）。队列满时丢弃最旧的副本，从不在音频路径中等待。包的第一个字节为 0（手机）或 1（AI）。
+- **可选录音：** `PHONE_RECORD_CALLS=1` 时，同样的帧交给一个后台写入线程，保存为 `conversations/<id>/call.wav`。队列满时丢弃帧。磁盘错误不会让通话失败。
 - 任务正文经 stdin 交给 worker，不出现在命令行参数、环境变量或日志中。
 
 ## 持久化
@@ -279,6 +280,7 @@ flowchart LR
 | `tasks/<task-id>.json` | 一通电话的任务快照：方向、目的、结果、内容、来源、system prompt 和音色。在拨号或接听前保存。 |
 | `conversations/<id>/meta.json` | 一个会话的记录：方向、手机地址、时间、状态、结束原因、收尾结果、错误、任务 ID、音色和字节数。不含电话号码。 |
 | `conversations/<id>/transcript.jsonl` | 完整转写，每行一条事件（`seq`、`role`、`eventId`、`text`、`startMs`、`endMs`）。 |
+| `conversations/<id>/call.wav` | 可选。`PHONE_RECORD_CALLS=1` 时的 24 kHz 立体声 PCM16。左声道是手机，右声道是 AI。 |
 | `settings/system-prompt.json` | 全局 System Prompt。 |
 | `devices/inbound-prompts.json` | 每部手机的来电 prompt。 |
 | `devices/pair-keys.json` | 仅 Mac。配对密钥。 |
@@ -287,12 +289,12 @@ flowchart LR
 
 - 启动时，Server 加载最近 256 条会话记录（不加载转写正文）。上次停止时仍在进行的记录标为 `failed`，错误为 `server_restarted`。
 - 每部手机的音色选择只保存在内存中。
-- Server 不保存通话音频、电话号码或 API 密钥。
+- Server 不保存电话号码或 API 密钥。只有 `PHONE_RECORD_CALLS=1` 时才保存通话音频。
 
 ## 并发模型
 
 - **一个事件循环。** Server 是一个 Python 进程，运行一个 asyncio 事件循环（aiohttp）。API 处理、`Line`、会话、来电监听和平台适配器都在这个循环中运行。因此通话控制状态按单一顺序变化，不需要线程之间的锁。每部手机一个 `asyncio.Lock`，串行处理这部手机的拨号、接听和结束。
-- **写入线程。** `ConversationRecords` 和 `Diagnostics` 各有一个后台线程和有界队列。磁盘慢不会阻塞通话。诊断队列满时丢弃条目并计数（`droppedLogs`）。转写读取也排在同一个记录队列中，所以读取会返回在它之前提交的全部事件。
+- **写入线程。** `ConversationRecords` 和 `Diagnostics` 各有一个后台线程和有界队列。磁盘慢不会阻塞通话。诊断队列满时丢弃条目并计数（`droppedLogs`）。转写读取也排在同一个记录队列中，所以读取会返回在它之前提交的全部事件。开启通话录音时，录音另有一个写入线程，队列满时丢弃音频帧。
 - **阻塞 I/O。** 保存任务和 Prompt 使用 `asyncio.to_thread`。
 - **进程。** 每通电话有自己的 AI worker 进程，位于新的进程组中。Mac 启动器（`run-mac.cjs`）是 Mac Server 的父进程。
 - **不定时轮询。** 通话状态来自平台通知。收到通知后，`CallState` 查询手机，最多尝试 3 次。查询失败的结果是 `unknown`，不是通话结束。
