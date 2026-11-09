@@ -266,6 +266,25 @@ function callRow(c, current) {
   const dur = element('span', duration(callSeconds(c)), 'dur'); if (live) dur.dataset.liveDuration = c.id;
   node.append(arrow, main, dur); return node;
 }
+function historyEntry(c) {
+  const line = element('div', '', 'call-line');
+  line.append(callRow(c, false));
+  line.append(button(msg('recording.listen'), async () => {
+    await choose(c.id);
+    const section = $('detail')?.querySelector('.recording');
+    section?.scrollIntoView({block: 'nearest'});
+    const player = $('recording-player');
+    if (!player) return;
+    try { await player.play(); } catch { /* The player stays on the call so it can be started there. */ }
+  }, 'quiet tiny'));
+  return line;
+}
+async function playSavedRecording() {
+  const player = $('recording-player');
+  if (!player) throw localError('recording.none');
+  $('detail')?.querySelector('.recording')?.scrollIntoView({block: 'nearest'});
+  await player.play();
+}
 function render() {
   const devices = state.devices || [], conversations = state.conversations || [];
   const line = lineView();
@@ -280,7 +299,7 @@ function render() {
     const list = $('conversation-list'); list.replaceChildren(element('h4', msg('calls.current')));
     list.append(current ? callRow(current, true) : element('p', msg(line.state === 'recovering' ? 'calls.idleRecovering' : 'calls.idle'), 'empty'));
     list.append(element('h4', msg('calls.records')));
-    for (const c of history) list.append(callRow(c, false)); if (!history.length) list.append(element('p', msg('calls.empty'), 'empty'));
+    for (const c of history) list.append(isActive(c) ? callRow(c, false) : historyEntry(c)); if (!history.length) list.append(element('p', msg('calls.empty'), 'empty'));
   }
   updateDialGate();
   if (selected) { const item = conversations.find(c => c.id === selected); if (item) { if (!isActive(item) && monitor.key === selected) monitor.stop();
@@ -342,8 +361,9 @@ async function choose(key, rebuild = false) {
   if (selected !== key || gen !== generation) return;
   const detail = $('detail'); detail.replaceChildren(detailHead(item));
   if (!rebuild && window.innerWidth <= 980 && currentPage === 'calls') detail.scrollIntoView({block: 'start'});
-  // 推送快照已显示结束时以快照为准，避免详情与快照不一致时反复重建。
   const known = state?.conversations?.find(c => c.id === key), live = detailLive = isActive(item) && (!known || isActive(known));
+  if (!live) await appendRecording(key, gen);
+  // 推送快照已显示结束时以快照为准，避免详情与快照不一致时反复重建。
   if (historyOnly) { detail.append(element('p', msg('detail.historyOnly'), 'hint')); appendFullTranscript(key, gen, true); render(); return; }
   if (live) {
     const talk = block(msg('detail.live')); const transcriptPanel = element('div', '', 'transcripts'); talk.append(transcriptPanel); detail.append(talk); transcriptView.start(key, transcriptPanel, () => endDetail(key));
@@ -365,6 +385,28 @@ async function choose(key, rebuild = false) {
   renderCommands(item.commands); render();
 }
 // 完整转写：读 Server 存盘内容；进行中的通话只返回已写入部分。已结束的通话自动读取。
+async function appendRecording(key, gen) {
+  const sec = block(msg('recording.title'), msg('recording.note'));
+  sec.classList.add('recording');
+  const status = element('p', '', 'status');
+  const url = `${origin}/v1/conversations/${encodeURIComponent(key)}/recording`;
+  let ready = false;
+  try {
+    ready = (await fetch(url, {method: 'HEAD', cache: 'no-store'})).ok;
+  } catch { ready = false; }
+  if (selected !== key || gen !== generation) return;
+  if (!ready) show(status, msg('recording.none'));
+  else {
+    const player = document.createElement('audio');
+    player.id = 'recording-player';
+    player.controls = true;
+    player.preload = 'none';
+    player.src = url;
+    sec.append(button(msg('recording.listen'), playSavedRecording, 'primary'), player);
+  }
+  sec.append(status);
+  $('detail').append(sec);
+}
 function appendFullTranscript(key, gen, auto) {
   const sec = block(msg(auto ? 'transcript.title' : 'transcript.savedTitle'), auto ? '' : msg('transcript.savedNote'));
   const body = element('div', '', 'transcript-body'), status = element('p', auto ? msg('common.loading') : '', 'status');

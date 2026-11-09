@@ -124,6 +124,30 @@ class ConsoleTests(unittest.IsolatedAsyncioTestCase):
         self.runtime.spawn = spawn
         self.client = TestClient(TestServer(self.app))
         await self.client.start_server()
+    async def test_saved_recording_plays_only_after_the_call(self):
+        key = 'ab' * 16
+        self.runtime.items[key] = {'id': key, 'state': 'ended', 'address': PHONE}
+        missing = await self.client.get(f'/v1/conversations/{key}/recording')
+        self.assertEqual(missing.status, 404)
+        folder = self.runtime.records.root / key
+        folder.mkdir(parents=True)
+        (folder / 'call.wav').write_bytes(b'RIFFdemo')
+        ready = await self.client.get(f'/v1/conversations/{key}/recording')
+        self.assertEqual(ready.status, 200)
+        self.assertEqual(ready.content_type, 'audio/wav')
+        self.assertEqual(await ready.read(), b'RIFFdemo')
+        self.runtime.items[key]['state'] = 'active'
+        busy = await self.client.get(f'/v1/conversations/{key}/recording')
+        self.assertEqual(busy.status, 409)
+        outside = self.root / 'outside.wav'
+        outside.write_bytes(b'nope')
+        saved = folder / 'call.wav'
+        saved.unlink()
+        saved.symlink_to(outside)
+        self.runtime.items[key]['state'] = 'ended'
+        denied = await self.client.get(f'/v1/conversations/{key}/recording')
+        self.assertEqual(denied.status, 404)
+
     async def test_device_name_reaches_snapshot_and_device_list(self):
         self.phones.names = {PHONE: "Pixel 9"}
         snapshot = await (await self.client.get("/v1/console")).json()
