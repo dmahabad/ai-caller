@@ -56,7 +56,7 @@ class Store:
         except FileNotFoundError:
             return default
 
-    def task(self, body, system_prompt, voice="marin"):
+    def task(self, body, system_prompt, voice="gleam"):
         voice = validate_voice(voice)
         if not isinstance(body, dict):
             raise GatewayError("task_required")
@@ -72,7 +72,7 @@ class Store:
                 "content": content, "source": source, "systemPrompt": system_prompt, "voice": voice}
         return self.commit_task(task)
 
-    def inbound_task(self, device_prompt, system_prompt, guard_prompt, voice="marin"):
+    def inbound_task(self, device_prompt, system_prompt, guard_prompt, voice="gleam"):
         """来电任务快照：目的和结果固定，保护 prompt 跟在全局 system prompt 之后，设备 prompt 作为内容。"""
         from .inbound import DEFAULT_INBOUND_PROMPT, INBOUND_OUTCOME, INBOUND_PURPOSE
         voice = validate_voice(voice)

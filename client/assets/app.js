@@ -126,8 +126,13 @@ function describeVoice() {
 // 音色名来自服务端，不翻译；只有“默认”标记随语言切换。
 const voiceText = voice => voice.default ? t('voice.default', {name: voice.displayName}) : voice.displayName;
 function labelVoices() { for (const option of $('dial-voice').options) { const voice = voiceCatalog?.voices.find(v => v.id === option.value); if (voice) option.text = voiceText(voice); } }
-const defaultVoiceOption = () => { const option = new Option(t('voice.default', {name: 'Marin'}), 'marin'); show(option, msg('voice.default', {name: 'Marin'})); return option; };
-async function loadVoices() { const gen = generation; const catalog = await api('/v1/voices'); if (gen !== generation) return; voiceCatalog = catalog; $('dial-voice').replaceChildren(...catalog.voices.map(v => new Option(voiceText(v), v.id))); $('dial-voice').value = catalog.defaultVoice; describeVoice(); syncDeviceVoice(true); }
+const defaultVoiceOption = () => { const option = new Option(t('voice.default', {name: 'Gleam'}), 'gleam'); show(option, msg('voice.default', {name: 'Gleam'})); return option; };
+function withGleamDefault(catalog) {
+  catalog.defaultVoice = 'gleam';
+  for (const voice of catalog.voices) voice.default = voice.id === 'gleam';
+  return catalog;
+}
+async function loadVoices() { const gen = generation; const catalog = withGleamDefault(await api('/v1/voices')); if (gen !== generation) return; voiceCatalog = catalog; $('dial-voice').replaceChildren(...catalog.voices.map(v => new Option(voiceText(v), v.id))); $('dial-voice').value = catalog.defaultVoice; describeVoice(); syncDeviceVoice(true); }
 async function previewVoice() {
   stopVoicePreview(); const epoch = voicePreview.epoch; const controller = voicePreview.controller = new AbortController(); const timer = setTimeout(() => controller.abort(), 25000);
   show($('voice-preview-status'), msg(voiceCatalog?.voices.find(v => v.id === $('dial-voice').value)?.sample?.state === 'bundled' ? 'preview.loading' : 'preview.generating'));
@@ -232,7 +237,7 @@ function renderDevices(devices, line) {
     const who = element('div', '', 'who'), name = element('div', deviceTitle(device), 'name' + (nameOf(device) ? '' : ' unknown'));
     who.append(name, element('div', status.text, 'state'), element('div', device.address, 'addr'));
     const tags = element('div', '', 'tags'); const promptTag = inboundPromptTag(device); if (promptTag) tags.append(element('span', promptTag, 'tag'));
-    if (device.voice && device.voice !== 'marin') tags.append(element('span', msg('device.voiceTag', {voice: device.voice}), 'tag'));
+    if (device.voice && device.voice !== (voiceCatalog?.defaultVoice || 'gleam')) tags.append(element('span', msg('device.voiceTag', {voice: device.voice}), 'tag'));
     if (tags.childElementCount) who.append(tags);
     const ops = element('div', '', 'ops');
     const control = operation => async () => { await api(`/v1/management/${device.address}/${operation}`, 'POST'); state = await api('/v1/console'); render(); };

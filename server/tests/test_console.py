@@ -215,7 +215,7 @@ class ConsoleTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(self.runtime.get(item['id'])['error'], None)
     async def test_voice_catalog_and_invalid_voice_never_dials(self):
         catalog = await (await self.client.get('/v1/voices')).json()
-        self.assertEqual(catalog['defaultVoice'],'marin')
+        self.assertEqual(catalog['defaultVoice'],'gleam')
         self.assertEqual(catalog['model'],'gpt-live-1')
         self.assertEqual(len(catalog['voices']),13)
         self.assertTrue(set(REMOVED_VOICES).isdisjoint(v['id'] for v in catalog['voices']))
@@ -271,7 +271,7 @@ class ConsoleTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_device_voice_is_shared_per_known_device_without_call_side_effects(self):
         first, second = f'/v1/devices/{PHONE}/voice', f'/v1/devices/{OTHER}/voice'
-        self.assertEqual((await (await self.client.get(first)).json())['voice'], 'marin')
+        self.assertEqual((await (await self.client.get(first)).json())['voice'], 'gleam')
         self.assertEqual((await self.client.put(first, json={'voice': 'quartz'})).status, 200)
         self.assertEqual((await self.client.put(second, json={'voice': 'vesper'})).status, 200)
         for path, voice in ((first, 'quartz'), (second, 'vesper')):
@@ -290,7 +290,7 @@ class ConsoleTests(unittest.IsolatedAsyncioTestCase):
         other = TestClient(TestServer(other_app))
         await other.start_server()
         try:
-            self.assertEqual((await (await other.get(first)).json())['voice'], 'marin')
+            self.assertEqual((await (await other.get(first)).json())['voice'], 'gleam')
         finally:
             await other.close()
 

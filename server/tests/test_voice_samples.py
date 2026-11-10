@@ -93,7 +93,7 @@ class VoiceSampleTests(unittest.IsolatedAsyncioTestCase):
                 try:
                     catalog = await (await client.get('/v1/voices')).json()
                     self.assertEqual({v['id'] for v in catalog['voices']}, VOICE_IDS)
-                    self.assertEqual(catalog['defaultVoice'], 'marin')
+                    self.assertEqual(catalog['defaultVoice'], 'gleam')
                     self.assertTrue(all(v['sample']['state'] == 'bundled' and not v['sample']['mayIncurCost'] for v in catalog['voices']))
                     async def replay(voice):
                         response = await client.post(f'/v1/voices/{voice}/preview')
