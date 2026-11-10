@@ -277,7 +277,7 @@ All data is in `PHONE_DATA_DIR` (default `~/.local/share/ai-caller/`). Directori
 | Path | Content |
 | --- | --- |
 | `tasks/<task-id>.json` | Task snapshot of one call: direction, purpose, outcome, content, source, system prompt and voice. Saved before the dial or answer. |
-| `conversations/<id>/meta.json` | Record of one conversation: direction, phone address, times, state, end reason, cleanup result, error, task ID, voice and byte counts. No phone number. |
+| `conversations/<id>/meta.json` | Record of one conversation: direction, phone address, dialed number or numeric caller ID, times, state, end reason, cleanup result, error, task ID, voice and byte counts. |
 | `conversations/<id>/transcript.jsonl` | Full transcript, one event for each line (`seq`, `role`, `eventId`, `text`, `startMs`, `endMs`). |
 | `settings/system-prompt.json` | Shared System Prompt. |
 | `devices/inbound-prompts.json` | Inbound prompt of each phone. |
@@ -287,7 +287,7 @@ All data is in `PHONE_DATA_DIR` (default `~/.local/share/ai-caller/`). Directori
 
 - At start, the server loads the latest 256 conversation records (not the transcripts). A record that was still active when the server stopped becomes `failed` with `server_restarted`.
 - The voice selection of each phone is in memory only.
-- The server does not save call audio, phone numbers or the API key.
+- The server saves the conversation's phone number in `meta.json`. It does not save call audio or the API key, and logs still omit phone numbers.
 
 ## Concurrency model
 

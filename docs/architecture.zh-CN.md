@@ -277,7 +277,7 @@ flowchart LR
 | 路径 | 内容 |
 | --- | --- |
 | `tasks/<task-id>.json` | 一通电话的任务快照：方向、目的、结果、内容、来源、system prompt 和音色。在拨号或接听前保存。 |
-| `conversations/<id>/meta.json` | 一个会话的记录：方向、手机地址、时间、状态、结束原因、收尾结果、错误、任务 ID、音色和字节数。不含电话号码。 |
+| `conversations/<id>/meta.json` | 一个会话的记录：方向、手机地址、拨出的号码或数字来电号码、时间、状态、结束原因、收尾结果、错误、任务 ID、音色和字节数。 |
 | `conversations/<id>/transcript.jsonl` | 完整转写，每行一条事件（`seq`、`role`、`eventId`、`text`、`startMs`、`endMs`）。 |
 | `settings/system-prompt.json` | 全局 System Prompt。 |
 | `devices/inbound-prompts.json` | 每部手机的来电 prompt。 |
@@ -287,7 +287,7 @@ flowchart LR
 
 - 启动时，Server 加载最近 256 条会话记录（不加载转写正文）。上次停止时仍在进行的记录标为 `failed`，错误为 `server_restarted`。
 - 每部手机的音色选择只保存在内存中。
-- Server 不保存通话音频、电话号码或 API 密钥。
+- Server 把这通电话的号码保存在 `meta.json`。不保存通话音频或 API 密钥，日志仍然不含电话号码。
 
 ## 并发模型
 
