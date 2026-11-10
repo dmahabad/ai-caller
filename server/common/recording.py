@@ -1,18 +1,21 @@
 """Optional local copy of one call. Off unless PHONE_RECORD_CALLS=1.
 
 The file is stereo PCM16 at 24 kHz. The left channel is the phone capture and the
-right channel is the AI playback. A background thread writes it. A full queue or a
-disk error drops audio and does not block or fail the call.
+right channel is the AI playback. Each frame is placed at the time it arrived, and
+silence fills the gap when one side is quiet, so the channels stay on one clock.
+A background thread writes the file. A full queue or a disk error drops audio and
+does not block or fail the call.
 """
 import os
 from pathlib import Path
 import queue
 import threading
+import time
 import wave
 
 RATE = 24000
 MAX_FRAME = 960
-# Bound memory when one side runs ahead, then pad the other side with silence.
+# Bound memory when one side is quiet. The gap is silence, not a shift of the other side.
 MAX_LEAD = RATE * 2 * 8
 MAX_QUEUED = RATE * 2 * 2
 
@@ -50,11 +53,11 @@ class CallRecorder:
         if direction not in (0, 1) or not isinstance(pcm, (bytes, bytearray)) or not pcm or len(pcm) % 2 or len(pcm) > MAX_FRAME:
             return
         try:
-            self.enqueue(direction, pcm)
+            self.enqueue(direction, pcm, time.monotonic())
         except Exception as error:
             self.fail(error)
 
-    def enqueue(self, direction, pcm):
+    def enqueue(self, direction, pcm, stamp):
         with self.lock:
             if self.closed or self.failed:
                 return
@@ -65,7 +68,7 @@ class CallRecorder:
             if self.thread is None:
                 self.thread = threading.Thread(target=self.run, name='phone-call-recorder', daemon=True)
                 self.thread.start()
-            self.pending.put((direction, bytes(pcm)))
+            self.pending.put((direction, bytes(pcm), stamp))
 
     def close(self):
         with self.lock:
@@ -80,18 +83,23 @@ class CallRecorder:
         return dropped
 
     def run(self):
+        origin = None
+        base = 0
         left, right = bytearray(), bytearray()
         try:
             while True:
                 item = self.pending.get()
                 if item is None:
-                    self.drain(left, right, final=True)
+                    self.drain(left, right, base, final=True)
                     break
-                direction, pcm = item
+                direction, pcm, stamp = item
                 with self.lock:
                     self.queued -= len(pcm)
-                (left if direction == 0 else right).extend(pcm)
-                self.drain(left, right, final=False)
+                if origin is None:
+                    origin = stamp
+                start = max(0, int((stamp - origin) * RATE))
+                self.place(left if direction == 0 else right, base, start, pcm)
+                base = self.drain(left, right, base, final=False)
         except Exception as error:
             self.fail(error)
         finally:
@@ -107,20 +115,26 @@ class CallRecorder:
                 except Exception as error:
                     self.fail(error)
 
-    def drain(self, left, right, final):
-        while True:
-            pair = min(len(left), len(right)) & ~1
-            if not pair and (final or len(left) > self.max_lead or len(right) > self.max_lead):
-                pair = max(len(left), len(right)) & ~1
-                if len(left) < pair:
-                    left.extend(b'\x00' * (pair - len(left)))
-                if len(right) < pair:
-                    right.extend(b'\x00' * (pair - len(right)))
-            if not pair:
-                return
-            self.ensure()
-            self.wav.writeframes(interleave(left[:pair], right[:pair]))
-            del left[:pair], right[:pair]
+    def place(self, buf, base, start, pcm):
+        # A frame that arrives before its clock slot is appended. The file is only written forward.
+        if start - base > len(buf) // 2:
+            buf.extend(b'\x00' * ((start - base) - len(buf) // 2) * 2)
+        buf.extend(pcm)
+
+    def drain(self, left, right, base, final):
+        if final or abs(len(left) - len(right)) > self.max_lead:
+            gap = len(right) - len(left)
+            if gap > 0:
+                left.extend(b'\x00' * gap)
+            elif gap < 0:
+                right.extend(b'\x00' * -gap)
+        pair = min(len(left), len(right)) & ~1
+        if not pair:
+            return base
+        self.ensure()
+        self.wav.writeframes(interleave(left[:pair], right[:pair]))
+        del left[:pair], right[:pair]
+        return base + pair // 2
 
     def ensure(self):
         if self.wav:

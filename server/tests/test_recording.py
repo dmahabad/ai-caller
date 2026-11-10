@@ -40,6 +40,16 @@ class RecordingTests(unittest.TestCase):
             self.assertEqual(read_wav(path), (2, 2, 24000, b'\x01\x00\x03\x00\x02\x00\x04\x00\x00\x00\x05\x00'))
             self.assertEqual(failures, [])
 
+    def test_a_quiet_gap_stays_on_the_clock_instead_of_shifting_the_later_side(self):
+        with tempfile.TemporaryDirectory() as root:
+            recorder = CallRecorder(root, 'e' * 32, lambda error: None)
+            start = 5000.0
+            recorder.enqueue(0, b'\x01\x00\x01\x00', start)
+            recorder.enqueue(1, b'\x02\x00\x02\x00', start + 2 / 24000)
+            self.assertEqual(recorder.close(), 0)
+            frames = read_wav(Path(root) / ('e' * 32) / 'call.wav')[3]
+            self.assertEqual(frames, b'\x01\x00\x00\x00\x01\x00\x00\x00\x00\x00\x02\x00\x00\x00\x02\x00')
+
     def test_no_file_when_the_call_has_no_audio(self):
         with tempfile.TemporaryDirectory() as root:
             recorder = CallRecorder(root, 'b' * 32, lambda error: None)
