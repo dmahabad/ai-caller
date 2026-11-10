@@ -66,7 +66,7 @@ export function createAISession(gateway: DuplexAudio, options: SessionOptions) {
           type: 'session.commentary.append',
           delegation_id: null,
           content:
-            managed ? 'The caller has answered. Introduce yourself as an AI assistant and begin the telephone task. Do not claim the task is complete without evidence.' : 'The caller has answered this authorized telephone audio test. Speak now in Mandarin Chinese. Introduce yourself as an AI voice assistant connected through a Bluetooth phone gateway. Ask whether they can hear you clearly, then listen and have a short conversation. Do not make other calls or claim tool actions.',
+            managed ? 'The caller has answered. Begin the telephone task. Follow the task instructions for how to introduce yourself. Do not claim the task is complete without evidence.' : 'The caller has answered this authorized telephone audio test. Speak now in Mandarin Chinese. Introduce yourself as an AI voice assistant connected through a Bluetooth phone gateway. Ask whether they can hear you clearly, then listen and have a short conversation. Do not make other calls or claim tool actions.',
         })
       );
   }
