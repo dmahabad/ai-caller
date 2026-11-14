@@ -29,7 +29,7 @@ const managed = process.env.PHONE_MANAGED === '1';
 const input = managed ? createInterface({ input: process.stdin, crlfDelay: Infinity }) : undefined;
 const messages = input?.[Symbol.asyncIterator]();
 let taskInstructions = '';
-let voice = 'marin';
+let voice = 'gleam';
 if (messages) {
   const first = await messages.next();
   const init = z.object({ type: z.literal('init'), task: z.object({ purpose: z.string(), outcome: z.string(), content: z.string(), systemPrompt: z.string(), voice: z.string().optional() }) }).parse(JSON.parse(first.value ?? ''));

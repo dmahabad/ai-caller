@@ -132,7 +132,7 @@ for (const order of ['model-first', 'answer-first']) {
     assert.equal(f.session().model, 'gpt-live-1');
     assert.equal(f.session().delegation.responses.model, 'gpt-6-luna');
     assert.equal(f.session().store, false);
-    assert.deepEqual(f.session().audio, { format: { type: 'audio/pcm', rate: 24000 }, output: { voice: 'marin' } });
+    assert.deepEqual(f.session().audio, { format: { type: 'audio/pcm', rate: 24000 }, output: { voice: 'gleam' } });
     const capture = Buffer.alloc(960, 3), playback = Buffer.alloc(960, 5);
     await f.capture(capture);
     assert.equal(f.input.length, 0);

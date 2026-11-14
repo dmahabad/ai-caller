@@ -27,7 +27,7 @@ ERROR_CODES = FAILURES | {'audio_ready_timeout', 'audio_reader_timeout', 'invali
     'phone_disconnected', 'native_transport_failed', 'hfp_query_timeout', 'hfp_query_failed',
     'hfp_control_unsynchronized', 'unclassified'}
 ERROR_STAGES = {'reader_ready', 'sco_start', 'capture_transport', 'playback_handoff', 'control_transport',
-    'audio_monitor', 'audio_cleanup', 'api_request', 'conversation_record', 'inbound_answer'}
+    'audio_monitor', 'audio_cleanup', 'api_request', 'conversation_record', 'inbound_answer', 'call_recording'}
 
 
 def exception_fields(error, stage):
@@ -70,7 +70,8 @@ def sanitize(value):
     if isinstance(value.get('stage'), str) and value['stage'] in {'capture_transport', 'control_transport', 'private_audio_send', 'playback_handoff', 'transport_failure',
             'monitor_drop', 'monitor_enqueue', 'monitor_send', 'monitor_failure', 'model_input_send',
             'model_connect', 'model_session_setup', 'input_queue_clear', 'playback_queue_clear', 'model_output_handoff', 'model_first_output', 'model_output_gap', 'hfp_capture_process',
-            'hfp_capture_queue', 'hfp_playback_queue', 'hfp_underrun', 'hfp_host_send', 'interruption_observed', 'reader_ready'}:
+            'hfp_capture_queue', 'hfp_playback_queue', 'hfp_underrun', 'hfp_host_send', 'interruption_observed', 'reader_ready',
+            'recording_drop'}:
         result['stage'] = value['stage']
     for key in ('state', 'lastKnownState'):
         if isinstance(value.get(key), str) and value[key] in {'unknown', 'dialing', 'alerting', 'active', 'held', 'incoming', 'waiting', 'ended'}:

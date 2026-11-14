@@ -208,6 +208,15 @@ def install(app, adapter, hub, store=None):
             raise GatewayError('invalid_transcript_cursor') from None
         return after, request.query.get('cacheId')
 
+    async def recording(request):
+        item = runtime.get(request.match_info['key'])
+        if item['state'] in ACTIVE:
+            raise GatewayError('recording_not_ready', 409)
+        path = runtime.records.root / item['id'] / 'call.wav'
+        if path.is_symlink() or not path.is_file():
+            raise GatewayError('recording_not_found', 404)
+        return web.FileResponse(path, headers={'Content-Type': 'audio/wav', 'Cache-Control': 'no-store', 'Content-Disposition': 'inline'})
+
     async def transcript_history(request):
         # 持久化的完整转写；进行中的会话返回已写入部分。实时增量用 /transcript/events。
         item = runtime.get(request.match_info['key'])
@@ -343,6 +352,7 @@ def install(app, adapter, hub, store=None):
     app.router.add_post("/v1/conversations/{key}/end", end)
     app.router.add_post("/v1/conversations/{key}/commands", command)
     app.router.add_get("/v1/conversations/{key}/monitor", monitor)
+    app.router.add_get("/v1/conversations/{key}/recording", recording)
     app.router.add_get("/v1/conversations/{key}/transcript", transcript_history)
     app.router.add_get("/v1/conversations/{key}/transcript/events", transcript_events)
     app.router.add_get("/v1/system-prompt", prompt)
