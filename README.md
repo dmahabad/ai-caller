@@ -201,6 +201,7 @@ Set these environment variables in the environment of the gateway process.
 | `OPENAI_API_KEY` | none (required) | Your OpenAI API key. If `~/.codex/config.toml` sets a different key variable name, the gateway reads that variable. |
 | `OPENAI_BACKEND_MODEL` | `gpt-6-luna` | Backend reasoning model for calls. |
 | `PHONE_DATA_DIR` | `~/.local/share/ai-caller/` | Data directory for tasks, prompts, conversations and logs. |
+| `PHONE_RECORD_CALLS` | unset | Set to `1` to save a private stereo WAV of each call. Any other value leaves call audio unsaved. |
 | `PHONE_NODE` | `node` from `PATH` | Node.js binary for the AI worker. The Mac launcher sets it to its own `node`. |
 | `PHONE_CLIENT_ORIGINS` | `localhost` / `127.0.0.1` on port 5173 | Extra allowed origins (comma-separated) for a separately served console. |
 | `PHONE_MAC_PYTHON` | `python3` | Mac only. Python used by `server/run-mac.cjs`. `python -m server` sets it. |
@@ -219,11 +220,12 @@ The gateway saves:
 
 - Task files and prompts (private JSON).
 - For each conversation (outbound and inbound), a record and the full transcript under `conversations/<id>/`. The record includes the number that was dialed, or the caller number when the phone reports a numeric caller ID.
+- A call recording, only when `PHONE_RECORD_CALLS=1`. The file is `conversations/<id>/call.wav`: stereo PCM16 at 24 kHz, left channel from the phone and right channel from the AI.
 - Diagnostic logs under `logs/calls.jsonl`. The logs do not contain phone numbers, task text, transcripts, audio or keys.
 
 The gateway does not save:
 
-- Call audio.
+- Call audio, unless `PHONE_RECORD_CALLS=1`.
 - The API key.
 
 Transcripts contain conversation content. Treat them as sensitive data. There is no automatic cleanup and no delete API. Remove files from the data directory manually when necessary.

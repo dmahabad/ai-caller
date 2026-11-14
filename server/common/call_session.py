@@ -10,6 +10,7 @@ import time
 from .contracts import GatewayError
 from .call_state import CallState
 from .diagnostics import exception_fields, sanitize
+from .recording import CallRecorder, recording_enabled
 
 ACTIVE = {"dialing", "answering", "starting", "active", "ending", "cleanup_failed"}
 COMMAND_TIMEOUT = 12
@@ -182,7 +183,7 @@ class CallSession:
         self.runtime, self.item = runtime, item
         self.id, self.address = item['id'], item['address']
         self.adapter, self.hub, self.diagnostics = runtime.adapter, runtime.hub, runtime.diagnostics
-        self.process = self.watcher = self.tracker = self.audio = self.text = None
+        self.process = self.watcher = self.tracker = self.audio = self.text = self.recorder = None
         self.monitors = set()
         self.command_timers = {}
         self.finishing = False
@@ -227,8 +228,18 @@ class CallSession:
         item["answeredAt"] = time.time()
         await self.attach(task)
 
+    def start_recorder(self):
+        if self.recorder or not recording_enabled():
+            return
+        try:
+            self.recorder = CallRecorder(self.runtime.records.root, self.id, lambda error: self.diagnostics.write(
+                self.id, exception_fields(error, 'call_recording')))
+        except Exception as error:
+            self.diagnostics.write(self.id, exception_fields(error, 'call_recording'))
+
     async def attach(self, task):
         """拨号或接听之后的共同部分：状态跟踪、worker 与 watcher。"""
+        self.start_recorder()
         item = self.item
         item["state"] = "starting"
         def call_changed():
@@ -351,6 +362,8 @@ class CallSession:
             queue.put_nowait(packet)
             if self.audio:
                 self.audio.metrics.observe("monitor_enqueue", size=len(packet), depth=queue.qsize())
+        if self.recorder:
+            self.recorder.write(direction, data)
 
     # ---- unified cleanup ----
     async def finish(self, reason):
@@ -421,6 +434,16 @@ class CallSession:
                 queue.get_nowait()
             queue.put_nowait(None)
         self.monitors.clear()
+        if self.recorder:
+            try:
+                dropped = await asyncio.to_thread(self.recorder.close)
+            except Exception as error:
+                self.diagnostics.write(self.id, exception_fields(error, 'call_recording'))
+                dropped = 0
+            self.recorder = None
+            if dropped:
+                self.diagnostics.write(self.id, {'event': 'audio_stage', 'stage': 'recording_drop', 'frames': dropped,
+                                                 'clockDomain': 'python_monotonic'})
         for handle, _ in self.command_timers.values():
             handle.cancel()
         self.command_timers.clear()

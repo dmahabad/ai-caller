@@ -1,6 +1,6 @@
 {
   "model": "gpt-live-1",
-  "defaultVoice": "marin",
+  "defaultVoice": "gleam",
   "source": "https://developers.openai.com/api/docs/guides/live-conversations#voice-options",
   "checkedAt": "2026-10-31",
   "selection": "project_supported_subset",
@@ -11,7 +11,7 @@
       "displayName": "Marin",
       "language": null,
       "regionalInfluence": null,
-      "default": true
+      "default": false
     },
     {
       "id": "quartz",
@@ -53,7 +53,7 @@
       "displayName": "Gleam",
       "language": "English",
       "regionalInfluence": "North American",
-      "default": false
+      "default": true
     },
     {
       "id": "meridian",

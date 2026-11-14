@@ -268,6 +268,7 @@ flowchart LR
 - **Transcripts:** A second `socketpair` (`PHONE_TRANSCRIPT_FD`) carries transcript events from the worker. The server keeps a bounded live cache and saves each accepted event to disk.
 - **Instructions:** The server writes text instructions to the worker stdin. The worker sends them to the model as `session.instructions.append` and reports the receipt on stdout.
 - **Listen copy:** `CallSession.publish` copies each capture and playback frame to the listen queues (5 packets each). When a queue is full, the server drops the oldest copy. It never waits in the audio path. The first byte of a packet is 0 (phone) or 1 (AI).
+- **Optional recording:** When `PHONE_RECORD_CALLS=1`, the same frames go to a background writer. It saves `conversations/<id>/call.wav` and drops frames when its queue is full. A disk error does not fail the call.
 - The task text goes to the worker through stdin. It is not in arguments, environment variables or logs.
 
 ## Persistence
@@ -279,6 +280,7 @@ All data is in `PHONE_DATA_DIR` (default `~/.local/share/ai-caller/`). Directori
 | `tasks/<task-id>.json` | Task snapshot of one call: direction, purpose, outcome, content, source, system prompt and voice. Saved before the dial or answer. |
 | `conversations/<id>/meta.json` | Record of one conversation: direction, phone address, dialed number or numeric caller ID, times, state, end reason, cleanup result, error, task ID, voice and byte counts. |
 | `conversations/<id>/transcript.jsonl` | Full transcript, one event for each line (`seq`, `role`, `eventId`, `text`, `startMs`, `endMs`). |
+| `conversations/<id>/call.wav` | Optional. Stereo PCM16 at 24 kHz when `PHONE_RECORD_CALLS=1`. Left is the phone, right is the AI. |
 | `settings/system-prompt.json` | Shared System Prompt. |
 | `devices/inbound-prompts.json` | Inbound prompt of each phone. |
 | `devices/pair-keys.json` | Mac only. Pairing keys. |
@@ -287,12 +289,12 @@ All data is in `PHONE_DATA_DIR` (default `~/.local/share/ai-caller/`). Directori
 
 - At start, the server loads the latest 256 conversation records (not the transcripts). A record that was still active when the server stopped becomes `failed` with `server_restarted`.
 - The voice selection of each phone is in memory only.
-- The server saves the conversation's phone number in `meta.json`. It does not save call audio or the API key, and logs still omit phone numbers.
+- The server saves the call's phone number in `meta.json`. Logs do not contain phone numbers. The server saves call audio only when `PHONE_RECORD_CALLS=1`. It does not save the API key.
 
 ## Concurrency model
 
 - **One event loop.** The server runs in one Python process with one asyncio event loop (aiohttp). The API handlers, the `Line`, the sessions, the inbound watcher and the platform adapter all run on this loop. Thus the call control state changes in one order, without locks between threads. A per-phone `asyncio.Lock` serializes dial, answer and end for one phone.
-- **Writer threads.** `ConversationRecords` and `Diagnostics` each have one background thread with a bounded queue. A slow disk does not block the call. When the diagnostic queue is full, the server drops entries and counts them (`droppedLogs`). Transcript reads go through the same record queue, so a read returns all events that were submitted before it.
+- **Writer threads.** `ConversationRecords` and `Diagnostics` each have one background thread with a bounded queue. A slow disk does not block the call. When the diagnostic queue is full, the server drops entries and counts them (`droppedLogs`). Transcript reads go through the same record queue, so a read returns all events that were submitted before it. An enabled call recording has its own writer thread and drops frames when that queue is full.
 - **Blocking I/O.** Task saves and prompt saves use `asyncio.to_thread`.
 - **Processes.** Each call has its own AI worker process in a new process group. The Mac launcher (`run-mac.cjs`) is the parent process of the Mac server.
 - **No timer polling.** Call state comes from platform notifications. After a notification, `CallState` queries the phone, with up to 3 attempts. A query failure gives `unknown`, not an end of the call.

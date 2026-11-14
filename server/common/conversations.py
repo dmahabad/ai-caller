@@ -17,7 +17,7 @@ from .call_session import ACTIVE, COMMAND_TIMEOUT, CallSession, DeviceRecovery, 
 from .ai_audio import WorkerAudio
 from .inbound import InboundWatcher, load_guard_prompt
 from .records import ConversationRecords
-from .voices import provider_settings, validate_voice
+from .voices import CATALOG, provider_settings, validate_voice
 
 from .transcripts import Transcripts, WorkerTranscripts
 
@@ -79,7 +79,7 @@ class Conversations:
             raise GatewayError('device_not_found', 404)
 
     def device_voice(self, selected):
-        return self.voice_preferences.get(selected, 'marin')
+        return self.voice_preferences.get(selected, CATALOG['defaultVoice'])
 
     def inbound_prompt(self, selected):
         return self.inbound_prompts.get(selected)

@@ -6,6 +6,7 @@ All notable changes to this project are recorded in this file. The format follow
 
 ### Added
 
+- Optional call recording. Set `PHONE_RECORD_CALLS=1` to save a private stereo WAV at `conversations/<id>/call.wav` (left: phone, right: AI). Off by default. A recording failure does not affect the call. After the call ends, the console can play the file.
 - Bluetooth hands-free (HFP) gateway for a real phone, on a Mac (built-in controller) or on Linux / Raspberry Pi (BlueZ + PipeWire).
 - AI voice agent for outbound calls, with a saved task per call and live operator instructions.
 - Automatic answer of incoming calls after about 3 seconds, with a per-phone inbound prompt and a fixed guard prompt.

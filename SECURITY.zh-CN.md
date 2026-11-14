@@ -42,7 +42,7 @@
 | 完整对话文字 | 是 | `conversations/<id>/transcript.jsonl` |
 | 诊断日志（不含号码、正文、音频或密钥） | 是 | `logs/calls.jsonl` |
 | 日志、转写、任务文件或设备通话列表中的电话号码 | 否 | — |
-| 通话音频 | 否 | — |
+| 通话音频 | 仅当 `PHONE_RECORD_CALLS=1` | `conversations/<id>/call.wav` |
 | API 密钥 | 否 | — |
 
 在 Mac 上，蓝牙配对密钥保存在 `<数据目录>/devices/pair-keys.json`（权限 600）。该文件在仓库之外，不要提交或分享。
